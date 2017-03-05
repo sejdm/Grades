@@ -1,0 +1,116 @@
+output:
+  - called: Name
+    original: Name
+
+  - called: Id
+    original: Roll No.
+
+  - called: Midterm
+    computed: midterm 
+
+  - called: Midterm
+    computed: midterm' 
+
+  - called: Quiz Avg
+    computed: quizavg
+
+  - called: Total
+    computed: total
+
+  - called: Letter
+    computed: letter
+
+
+exams:
+  midterm: 
+     called: Midterm
+     outof: 30
+
+  midterm':
+     from: midterm
+     absent: zero
+     to: 10
+
+  quizzes:
+     called: Quiz
+     eachoutof: 5
+  
+  quizavg:
+     average: quizzes
+     absent: zero
+
+  total:
+     aggregate:
+       midterm: 60
+       quizavg: 40
+     
+  letter:
+    using: total
+    scheme:
+      O: 95
+      A: 90
+      B: 80
+      C: 70
+      D: 70
+      E: 70
+
+using: midterm
+#  - quizzes:
+#      eachoutof: 10
+#      called: Quiz
+#
+#  - total:
+#      using:
+#        midterm: 30
+#        final: 30
+#        quizzes: 40
+#
+#Letter:
+#  - depends: total
+#  - scheme:
+#    A: 90
+#    B: 80
+#    C: 70
+#    D: 60
+#    E: 50
+#    F: 40
+#
+#
+#Show:
+#  Midterm: midterm
+#  Final: final 
+#  Quiz Avg: quiz
+#exams: 
+#  - midterm: 
+#      outof: 30
+#      called: Midterm
+#
+#  - final: 
+#      outof: 30
+#      called: Final
+#
+#  - quizzes:
+#      eachoutof: 10
+#      called: Quiz
+#
+#  - total:
+#      using:
+#        midterm: 30
+#        final: 30
+#        quizzes: 40
+#
+#Letter:
+#  - depends: total
+#  - scheme:
+#    A: 90
+#    B: 80
+#    C: 70
+#    D: 60
+#    E: 50
+#    F: 40
+#
+#
+#Show:
+#  Midterm: midterm
+#  Final: final 
+#  Quiz Avg: quiz

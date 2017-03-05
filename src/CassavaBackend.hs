@@ -7,6 +7,7 @@ import Data.Csv hiding (Parser)
 import Statistics.Sample
 import System.Environment
 import Data.List
+import qualified Data.Map as M
 
 
 encdec x b =encode . T.toList . changeAll x <$> decode NoHeader b

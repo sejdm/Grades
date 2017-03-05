@@ -1,4 +1,4 @@
-{-# LANGUAGE   FlexibleInstances, DeriveGeneric, RankNTypes, FlexibleContexts, TemplateHaskell, NoMonomorphismRestriction, TypeFamilies, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass, FlexibleContexts, NoMonomorphismRestriction, GeneralizedNewtypeDeriving #-}
 
 module Grade
     (
@@ -6,20 +6,23 @@ module Grade
     , GradeErrors (..)
     , LetterGrade (..)
     , absent
+    , LGrade
     , unparsed
     , marksEither
 
     , (/.)
     , (*.)
-    , (*..)
     , (+.)
-    , (.*)
     , ifAbsent
     , forAnyAbsent
     , ($$)
+    , ($$$)
+    , ($$$$)
 
     , use
     , setZero
+    , dropGrades
+    , combine
     , combineButDrop
     , letterGradeFrom
 
@@ -33,25 +36,19 @@ import Data.Csv
 import Data.List
 import GHC.Generics hiding (to, from)
 import ShowByteString
+import SemiVectorSpace
+import Safe
 
-
-
-
-
-data GradeErrors = Uncomputed | Unparsed | Unknown String | Absent Double deriving (Eq, Ord, Generic)
+data GradeErrors = Uncomputed | Unparsed | Unknown String | Absent Double deriving (Eq, Ord, Generic, NFData, ByteStringable)
 
 instance Show GradeErrors where
   show (Unknown s) = "No grade called " ++ s
   show Uncomputed = "The grade was uncomputed"
   show Unparsed = "The grade was unparsed"
-  show (Absent _) = "Absent"
+  show (Absent _) = "Ab"
 
-newtype Grade = Grade {unGrade :: (Either GradeErrors (Sum Double, Sum Double))} deriving (Eq, Generic)
+newtype Grade = Grade {unGrade :: Either GradeErrors (Sum Double, Sum Double)} deriving (Eq, Generic, NFData, ByteStringable)
 
-instance NFData GradeErrors
-instance NFData Grade
-instance ByteStringable Grade
-instance ByteStringable GradeErrors
 
 marksEither :: Grade -> Either GradeErrors Double
 marksEither x = getSum . fst <$> unGrade x
@@ -59,13 +56,12 @@ marksEither x = getSum . fst <$> unGrade x
 outofEither :: Grade -> Either GradeErrors Double
 outofEither x = getSum . snd <$> unGrade x
 
-
 -- Grade constructor
 x /. y = Grade $ pure (Sum x, Sum y)
 
 instance Show Grade where
-  show (Grade (Right (Sum x, Sum 100))) = show (roundTo 1 x)-- ++ "%"
-  show (Grade (Right (Sum x, Sum y))) = show (roundTo 1 x)-- ++ "/" ++ show y
+  show (Grade (Right (Sum x, Sum 100))) = show (roundTo 1 x)
+  show (Grade (Right (Sum x, Sum y))) = show (roundTo 1 x)
   show (Grade (Left e)) = show e
 
 instance Ord Grade where
@@ -75,38 +71,31 @@ instance Ord Grade where
   compare (Grade (Left e)) (Grade (Left e')) = compare e e'
 
 instance Monoid Grade where
-  mappend x y = Grade $  (liftA2 (<>)) (unGrade x) (unGrade y)
+  mappend x y = Grade $  liftA2 (<>) (unGrade x) (unGrade y)
   mempty = Grade (Right (Sum 0, Sum 0))
 
-
-
-
+instance SemiVectorSpace Grade where
+  t #* x = Grade $ normalize t $ unGrade x
+     where normalize z = fmap (\(Sum a, Sum b) -> (Sum (a/b*z), Sum z))
 
 gradeError :: GradeErrors -> Grade
 gradeError = Grade . Left
 
+unparsed :: Grade
 unparsed = gradeError Unparsed
+
+absent :: Double -> Grade
 absent = gradeError . Absent
 
 unknown :: String -> Grade
 unknown = gradeError . Unknown
 
 
+  
+(+.) = (<>)
 
+(*.) = flip (#*)
 
-
-(.*) :: Grade -> Double -> Grade
-x .* t = Grade $ normalize t $ unGrade x
-  where normalize z = (fmap (\(Sum a, Sum b) -> (Sum (a/b*z), Sum z)))
-
-x +. y = x <> y
-
-
-x *.. t = fmap (.*t) x
-x *. t = fmap (*..t) x
-
---f *. t = \u -> f u .* t
---f *.. t = \u v -> f u v .* t
 
 infixl 6 +.
 infixl 7 *.
@@ -114,7 +103,7 @@ infixl 7 *.
 
 
 -- Letter Grades
-data LetterGrade = O | Ap | A | Am | Bp | B | Bm | Cp | C | Cm | Dp | D | Dm | Ep | E | Em | F | I deriving (Eq, Ord)
+data LetterGrade = O | Ap | A | Am | Bp | B | Bm | Cp | C | Cm | Dp | D | Dm | Ep | E | Em | F | I deriving (Eq, Ord, ByteStringable)
 
 instance Show LetterGrade where
   show l = case l of
@@ -138,7 +127,7 @@ instance Show LetterGrade where
     I -> "I"
 
 
-newtype LGrade = LGrade (Either GradeErrors LetterGrade)
+newtype LGrade = LGrade (Either GradeErrors LetterGrade) deriving (ByteStringable)
 
 
 
@@ -147,40 +136,61 @@ instance Show LGrade where
    show (LGrade (Left (Absent _))) = show I
    show (LGrade (Left e)) = show e
 
-instance ByteStringable LGrade
 
+roundTo :: (RealFrac a1, Fractional a, Integral b) => b -> a1 -> a
+--roundTo n f = fromInteger ( round $ f * (10^n)) / (10.0^^n)
 roundTo n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
 
 
 
 
 
-ifAbsent l f h r = case l h r of 
-                      Grade (Left ( Absent n)) -> f n h r
+ifAbsent :: (t -> Grade) -> (Double -> t -> Grade) -> t -> Grade
+ifAbsent l f r = case l r of 
+                      Grade (Left ( Absent n)) -> f n r
                       y -> y
 
 
-forAnyAbsent l f h r = map g (l h r)
-  where g (Grade (Left ( Absent n))) = f n h r
+forAnyAbsent :: (t -> [Grade]) -> (Double -> t -> Grade) -> t -> [Grade]
+forAnyAbsent l f r = map g (l r)
+  where g (Grade (Left ( Absent n))) = f n r
         g y = y
 
-use l _ h r = l h r
-setZero n _ _  = 0 /. n
+use :: t1 -> t -> t1
+use l _  = l
+
+setZero :: Double -> t -> Grade
+setZero n _  = 0 /. n
 
 
 infixl 8 `ifAbsent`
 infixl 8 `forAnyAbsent`
 
 
-apply f l h r =  f (l h r)
+($$) = fmap
+($$$) = fmap . fmap
+($$$$) = fmap . fmap . fmap
 
-($$) = apply
 infixr 0 $$
+infixr 0 $$$
+infixr 0 $$$$
 
-indexed l = \n -> (!!(n-1)) $$ l
 
+indexed l n = ind (n-1) $$ l
+  where ind n xs = case atMay xs n of
+                      Just t -> t
+                      _ -> unparsed
+
+
+dropGrades :: Ord a => Int -> [a] -> [a]
 dropGrades n = drop n . sort
+
+combineButDrop :: (Ord c, Monoid c) => Int -> [c] -> c
 combineButDrop n = mconcat . dropGrades n
 
+combine :: Monoid a => [a] -> a
+combine = mconcat
 
-letterGradeFrom f l h =  LGrade . ((f <$>) . marksEither . l h)
+
+letterGradeFrom :: (Double -> LetterGrade) -> (a -> Grade) -> a -> LGrade
+letterGradeFrom f l =  LGrade . (f <$>) . marksEither . l

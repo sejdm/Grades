@@ -2,18 +2,22 @@
 module Main (main) where
 
 import Grade
-import CassavaBackend
-import CSVextras
+import CassavaBackendMap
+import CSVextrasMap
+import Safe
+import ConfigParser
 
-quizzes = "Quiz" `eachOutOf` 10
 
-midterm = "Midterm" `outOf` 60
+quizzes = "Quiz" `eachOutOf` 5
+quiz = indexed quizzes
+quizavg = combine . take 4 . forAnyAbsent quizzes setZero
+quizNo = length . quizzes
 
-final = "Final" `outOf` 60
+midterm = "Midterm" `outOf` 30
 
-quizavg = combineButDrop 1 $$ quizzes `forAnyAbsent` setZero
+final = "Final" `outOf` 30
 
-total = midterm `ifAbsent` use final *. 30   +.  final *. 30   +.  quizavg *. 40
+total = midterm  *. 70 +.  quizavg *. 30
 
 letterGrade = letterGradeFrom f total
   where f x | x >= 96 = O
@@ -26,14 +30,20 @@ letterGrade = letterGradeFrom f total
 
   
 newCSV = usingList [
-    "Name" .= fromColumn "Name"
-  , "Id" .= fromColumn "Reg. No."
+    "Id" .= fromColumn "Roll No."
+  , "Name" .= fromColumn "Name"
   , "Midterm" .= midterm
-  , "Final" .= final
+  --, "Final" .= final
+  , "Quiz 1" .= quiz 1
+  , "Quiz 2" .= quiz 2
+  , "Quiz 3" .= quiz 3
+  , "Quiz 4" .= quiz 4
+  , "Quiz 5" .= quiz 5
   , "Quiz Avg" .= quizavg
   , "Total" .= total
-  , "Grade" .= letterGrade
+  --, "Letter grade" .= letterGrade
                   ]
 
 
-main = simple newCSV total
+--main = simple newCSV total
+main = simpleMain

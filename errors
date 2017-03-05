@@ -1,0 +1,16 @@
+Grades-0.1.0.0: build (lib + exe)
+Preprocessing library Grades-0.1.0.0...
+[ 9 of 10] Compiling CSVextrasMap     ( src/CSVextrasMap.hs, .stack-work/dist/x86_64-linux/Cabal-1.24.2.0/build/CSVextrasMap.o )
+Preprocessing executable 'Grades-exe' for Grades-0.1.0.0...
+[1 of 1] Compiling Main             ( app/Main.hs, .stack-work/dist/x86_64-linux/Cabal-1.24.2.0/build/Grades-exe/Grades-exe-tmp/Main.o ) [CSVextrasMap changed]
+Linking .stack-work/dist/x86_64-linux/Cabal-1.24.2.0/build/Grades-exe/Grades-exe ...
+Grades-0.1.0.0: copy/register
+Installing library in
+/home/shane/haskellStacks/experiments/Grades/.stack-work/install/x86_64-linux/lts-8.0/8.0.2/lib/x86_64-linux-ghc-8.0.2/Grades-0.1.0.0-df8pRRUxzxIEP9ExfrRHq
+Installing executable(s) in
+/home/shane/haskellStacks/experiments/Grades/.stack-work/install/x86_64-linux/lts-8.0/8.0.2/bin
+Registering Grades-0.1.0.0...
+Copying from /home/shane/haskellStacks/experiments/Grades/.stack-work/install/x86_64-linux/lts-8.0/8.0.2/bin/Grades-exe to /home/shane/.local/bin/Grades-exe
+
+Copied executables to /home/shane/.local/bin:
+- Grades-exe

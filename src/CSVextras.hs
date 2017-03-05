@@ -1,8 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
- 
 module CSVextras (
-    setColumn
-  , outOf
+    outOf
   , outOfs
   , eachOutOf
   , eachOutOfs
@@ -14,9 +12,8 @@ module CSVextras (
   , (.=)
   ) where
 
-import Data.Vector as T hiding (sequence)
-import Data.ByteString as B
-import Data.ByteString.Char8 as C
+import qualified Data.Vector as T hiding (sequence)
+import qualified Data.ByteString as B
 import Safe
 import Grade
 import Histogram
@@ -25,53 +22,59 @@ import Control.Applicative
 import Data.String
 import ShowByteString
 
-getIndex :: B.ByteString -> B.ByteString -> Vector ByteString -> Int
+getIndex :: B.ByteString -> B.ByteString -> T.Vector B.ByteString -> Int
 getIndex e x v = case T.toList (T.elemIndices x v) of
              [] -> error ("No fromColumn labelled " Prelude.++ show e)
              (x:_) -> x
 
-getIndicesPrefixed :: B.ByteString -> Vector ByteString -> Vector Int
+getIndicesPrefixed :: B.ByteString -> T.Vector B.ByteString -> T.Vector Int
 getIndicesPrefixed p = T.findIndices (B.isPrefixOf p)
 
 
---parseCell :: Read a => ByteString -> Maybe a
+parseCell :: FromField a => Field -> Either String a
 parseCell s = runParser $ parseField s
 
---outOf :: Double -> V.Vector B.ByteString -> B.ByteString -> V.Vector B.ByteString -> Grade
-outOf c o h r =  either (const (absent o)) (/.o) $ parseCell $ r T.! (getIndex c c h)
-outOfs cs o h r =  either (const (absent o)) (/.o) $ Prelude.foldl1 (<|>) $ Prelude.map (\c -> parseCell $ r T.! (getIndex c c h)) cs
+outOf :: B.ByteString -> Double -> T.Vector B.ByteString -> T.Vector Field -> Grade
+outOf c o h r =  either (const (absent o)) (/.o) $ parseCell $ r T.! getIndex c c h
+
+outOfs :: [B.ByteString] -> Double -> T.Vector B.ByteString -> T.Vector Field -> Grade
+outOfs cs o h r =  either (const (absent o)) (/.o) $ Prelude.foldl1 (<|>) $ Prelude.map (\c -> parseCell $ r T.! getIndex c c h) cs
 
 (./) = flip outOf
 (.//) = flip outOfs
 
+eachOutOf :: B.ByteString -> Double -> T.Vector B.ByteString -> T.Vector Field -> [Grade]
 eachOutOf c o h r = T.toList $ T.map (either (const (absent o)) (/.o)  . parseCell . ( r T.!)) $ getIndicesPrefixed c h
-eachOutOfs cs o h r = T.toList $ T.map (either (const (absent o)) (/.o)  . parseCell . ( r T.!)) $ Prelude.foldl1 (<|>) $ Prelude.map ( \c ->getIndicesPrefixed c h) cs
 
-fromColumn c h r = r T.! (getIndex c c h)
+eachOutOfs :: [B.ByteString] -> Double -> T.Vector B.ByteString -> T.Vector Field -> [Grade]
+eachOutOfs cs o h r = T.toList $ T.map (either (const (absent o)) (/.o)  . parseCell . ( r T.!)) $ Prelude.foldl1 (<|>) $ Prelude.map ( `getIndicesPrefixed` h) cs
 
-
---setColumn :: Show a => String -> (B.ByteString -> V.Vector B.ByteString -> a) -> (String, (B.ByteString -> V.Vector B.ByteString -> B.ByteString))
-setColumn :: ByteStringable a => t1 -> (t -> a1 -> a) -> [(t1, t -> a1 -> ByteString)]
-setColumn s f = [(s, \x -> toByteString . f x)]
-
-(.=) :: ByteStringable a => t1 -> (t -> a1 -> a) -> [(t1, t -> a1 -> ByteString)]
-(.=) = setColumn
+fromColumn :: B.ByteString -> T.Vector B.ByteString -> T.Vector a -> a
+fromColumn c h r = r T.! getIndex c c h
 
 
---fromList :: [(String, (B.ByteString -> V.Vector B.ByteString -> B.ByteString))] -> ([String], B.ByteString -> V.Vector B.ByteString -> [B.ByteString])
-usingList x = (s , sequence . sequence fs)
-  where (s, fs) = T.unzip  $ T.fromList $ Prelude.concat x
+s .= f = (s, \x -> toByteString . f x)
 
+
+
+usingList :: [ (a1, b -> a)] -> (T.Vector a1, b -> (T.Vector a))
+usingList x = (s , sequence fs)
+  where (s, fs) = T.unzip  $ T.fromList x
+
+
+changeAll :: (a, a1 -> a1 -> a) -> T.Vector a1 -> T.Vector a
 changeAll (h, c) xs = T.cons h $ T.map (c (T.head xs)) (T.tail xs)
 
 
 
+stats :: (T.Vector Double -> b) -> (a -> a -> Grade) -> T.Vector a -> Either GradeErrors b
 stats f l v = (f<$>) . sequence . T.filter isNotAbsent . fmap (marksEither . l (T.head v)) $ T.tail v
   where isNotAbsent (Left (Absent _)) = False
         isNotAbsent _ = True
 
 
 
-histOutput m s l n = case (stats (histogram (assignBin m) . T.toList) l n) of
+histOutput :: Double -> FilePath -> (a -> a -> Grade) -> T.Vector a -> IO ()
+histOutput m s l n = case stats (histogram (assignBin m) . T.toList) l n of
                         Right a -> histToChart s a
                         Left e -> print e

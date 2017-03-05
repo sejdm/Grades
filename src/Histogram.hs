@@ -130,9 +130,8 @@ instance Show n => Show (RangeBin n) where
 
 assignBin :: Double -> Double -> RangeBin Double
 assignBin n x = RangeBin (a*n, a*n +n)
-  where a = fromIntegral $ floor (x/n)
+  where a = (fromIntegral $ ceiling (x/n)) - 1
 
 
 roundTo n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
 
-test = histogram (assignBin 10) [1,2,3]

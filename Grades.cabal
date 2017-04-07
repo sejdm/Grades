@@ -18,14 +18,13 @@ library
   exposed-modules:     Grade
                      , ConstrainedStuff
                      , Histogram
-                     , CSVextras
-                     , CSVextrasMap
-                     , CassavaBackend
                      , ShowByteString
-                     , SemiVectorSpace
-                     , MapBackend
+                     , CSVmonad
                      , CassavaBackendMap
-                     , ConfigParser
+                     , ConfigParserMonad
+                     , GradeParser
+                     , GradesEasy
+
   build-depends:       base >= 4.7 && < 5
                      , lens
                      , bifunctors

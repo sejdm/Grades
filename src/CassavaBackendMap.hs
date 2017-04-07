@@ -1,48 +1,30 @@
-module CassavaBackendMap (simple) where
+{-# LANGUAGE Strict, NoMonomorphismRestriction #-}
+module CassavaBackendMap (simple, simpleStat, simpleM) where
  
-import CSVextrasMap
 import qualified Data.Vector as T hiding (sequence)
 import qualified Data.ByteString.Lazy as B
 import Data.Csv hiding (Parser)
-import Statistics.Sample
 import System.Environment
-import Data.List
-import qualified Data.ByteString.Internal as IB
 import qualified Data.Map.Strict as M
+import GradeParser
 
 
+createSheet (h, f) = T.cons (T.fromList h) . T.map (T.fromList . f) 
 
-combinedEither bs = mconcat <$>  (sequence $ map (fmap snd . decodeByName) bs)
+combinedEither bs = mconcat <$>  (mapM (fmap snd . decodeByName) bs)
 
 combinedEitherIO ns = combinedEither <$> mapM B.readFile ns
 
-eitherPrint (Right x) = print x
-eitherPrint (Left x) = print x
 
-roundTo n f = fromInteger ( round $ f * (10^n)) / (10.0^^n)
-
-eitherPrintDouble (Right x) = print $ roundTo 1 x
-eitherPrintDouble (Left x) = print x
-
-
-simple x l = do
+finalIO m x l = do 
   ns <- getArgs
   es <- combinedEitherIO ns
   case es of
     Left e -> print e
-    Right y -> do B.writeFile "out.csv" (encode $ T.toList $ uncurry createSheet x y)
---(encodeByName (T.fromList h) $ T.toList $ T.map (getMapFunc h f) y)
-                  putStrLn "The Mean"
-                  eitherPrintDouble $ stats mean l y
-                  putStrLn ""
-                  putStrLn "The Standard deviation"
-                  eitherPrintDouble $ stats stdDev l y
-                  putStrLn ""
-                  putStrLn "The median"
-                  eitherPrintDouble $ stats median l y
-                  histOutput 10 "histogram.png" l y
+    Right y -> do B.writeFile "out.csv" (encode $ T.toList $ createSheet x y)
+                  m l y
 
+simple = flip (finalIO (\_ _ -> return ())) ()
 
-median :: T.Vector Double -> Double
-median xs = sort (T.toList xs) !! n
-  where n = T.length xs `div` 2
+simpleM = finalIO printStats  
+simpleStat = uncurry simpleM

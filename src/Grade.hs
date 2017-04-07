@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass, FlexibleContexts, NoMonomorphismRestriction, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE Strict, DeriveGeneric, DeriveAnyClass, FlexibleContexts, NoMonomorphismRestriction, GeneralizedNewtypeDeriving #-}
 
 module Grade
     (
@@ -15,16 +15,21 @@ module Grade
     , (+.)
     , ifAbsent
     , forAnyAbsent
+    , ifAbsentM
+    , forAnyAbsentM
     , ($$)
     , ($$$)
     , ($$$$)
 
     , use
     , setZero
+    , useM
+    , setZeroM
     , dropGrades
     , combine
     , combineButDrop
     , letterGradeFrom
+    , letterGradeFromM
 
     , indexed
     ) where
@@ -36,7 +41,6 @@ import Data.Csv
 import Data.List
 import GHC.Generics hiding (to, from)
 import ShowByteString
-import SemiVectorSpace
 import Safe
 
 data GradeErrors = Uncomputed | Unparsed | Unknown String | Absent Double deriving (Eq, Ord, Generic, NFData, ByteStringable)
@@ -57,6 +61,7 @@ outofEither :: Grade -> Either GradeErrors Double
 outofEither x = getSum . snd <$> unGrade x
 
 -- Grade constructor
+(/.) :: Double -> Double -> Grade
 x /. y = Grade $ pure (Sum x, Sum y)
 
 instance Show Grade where
@@ -74,9 +79,6 @@ instance Monoid Grade where
   mappend x y = Grade $  liftA2 (<>) (unGrade x) (unGrade y)
   mempty = Grade (Right (Sum 0, Sum 0))
 
-instance SemiVectorSpace Grade where
-  t #* x = Grade $ normalize t $ unGrade x
-     where normalize z = fmap (\(Sum a, Sum b) -> (Sum (a/b*z), Sum z))
 
 gradeError :: GradeErrors -> Grade
 gradeError = Grade . Left
@@ -91,14 +93,28 @@ unknown :: String -> Grade
 unknown = gradeError . Unknown
 
 
-  
+(.+) :: Applicative f => f Grade -> f Grade -> f Grade
+(.+) = liftA2 (<>)  
+
+(+.) :: Grade -> Grade -> Grade
 (+.) = (<>)
 
-(*.) = flip (#*)
 
+(*.) :: Grade -> Double -> Grade
+x *. t = Grade $ normalize t $ unGrade x
+  where normalize z = fmap (\(Sum a, Sum b) -> (Sum (a/b*z), Sum z))
+
+(.*) :: Functor f => f Grade -> Double -> f Grade
+x .* t = (*.t) <$> x
+
+
+infixl 6 .+
+infixl 7 .*
 
 infixl 6 +.
 infixl 7 *.
+
+
 
 
 
@@ -138,34 +154,46 @@ instance Show LGrade where
 
 
 roundTo :: (RealFrac a1, Fractional a, Integral b) => b -> a1 -> a
---roundTo n f = fromInteger ( round $ f * (10^n)) / (10.0^^n)
 roundTo n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
 
 
+                  
+
+ifAbsent :: Grade -> (Double -> Grade) -> Grade
+ifAbsent l f = case l of 
+                Grade (Left ( Absent n)) -> f n
+                y -> y
 
 
-
-ifAbsent :: (t -> Grade) -> (Double -> t -> Grade) -> t -> Grade
-ifAbsent l f r = case l r of 
-                      Grade (Left ( Absent n)) -> f n r
-                      y -> y
-
-
-forAnyAbsent :: (t -> [Grade]) -> (Double -> t -> Grade) -> t -> [Grade]
-forAnyAbsent l f r = map g (l r)
-  where g (Grade (Left ( Absent n))) = f n r
+forAnyAbsent :: [Grade] -> (Double -> Grade) -> [Grade]
+forAnyAbsent l f = map g (l)
+  where g (Grade (Left ( Absent n))) = f n
         g y = y
+
+
+ifAbsentM :: Monad m => m Grade -> (Double -> m Grade) -> m Grade
+ifAbsentM l f = do x <- l
+                   case x of 
+                        Grade (Left ( Absent n)) -> f n
+                        y -> pure y
+
+
+forAnyAbsentM l f = do x <- l
+                       sequence $ map g x
+    where g (Grade (Left ( Absent n))) = f n
+          g y = pure y
 
 use :: t1 -> t -> t1
 use l _  = l
 
-setZero :: Double -> t -> Grade
-setZero n _  = 0 /. n
+useM = use
 
 
-infixl 8 `ifAbsent`
-infixl 8 `forAnyAbsent`
+setZero :: Double -> Grade
+setZero n = 0 /. n
 
+setZeroM :: Applicative f => Double -> f Grade
+setZeroM = pure . setZero
 
 ($$) = fmap
 ($$$) = fmap . fmap
@@ -192,5 +220,9 @@ combine :: Monoid a => [a] -> a
 combine = mconcat
 
 
-letterGradeFrom :: (Double -> LetterGrade) -> (a -> Grade) -> a -> LGrade
-letterGradeFrom f l =  LGrade . (f <$>) . marksEither . l
+letterGradeFrom :: (Double -> LetterGrade) -> Grade -> LGrade
+letterGradeFrom f =  LGrade . (f <$>) . marksEither
+
+
+letterGradeFromM :: Functor f => (Double -> LetterGrade) -> f Grade -> f LGrade
+letterGradeFromM f l =  letterGradeFrom f <$> l

@@ -3,7 +3,7 @@ module Main (main) where
 
 import GradesEasy
 
-mth100 = usingMonadStat $ do 
+mth100 = usingMonadStatSafe $ do 
   name <- fromColumn "Name"
   id <- fromColumn "Roll No."
   midterm <- "Midterm" `outOf` 30
@@ -31,4 +31,4 @@ mth100 = usingMonadStat $ do
 
     
 --main = simpleMain
-main = simpleStat mth100
+main = simpleStatSafe mth100

@@ -111,6 +111,7 @@ changeToOut m (Defined s1 s2) = changeTo''' m (toByteString s1) (unsafeLookUp' s
 changeToOut m (Original s1 s2) = (toByteString s1) ..= fromColumn (toByteString s2)
 
 final m = usingMonad . output' . map (changeToOut m)
+finalSafe m = usingMonadSafe . output' . map (changeToOut m)
 
 
 nf = error "Unknown name "
@@ -131,7 +132,7 @@ stngfl=  "gradingscheme.yml"
 simpleMain = do x <-  exams . unJust <$> decodeFileEither stngfl
                 y <-  output . unJust <$> decodeFileEither stngfl
                 u <-  statistics . unJust <$> decodeFileEither stngfl
-                let s = final x y
-                simpleM s ((chk $ (unsafeLookUp' u x)) x)
+                let s = finalSafe x y
+                simpleMsafe s ((chk $ (unsafeLookUp' u x)) x)
                     where chk (NumV x) = x
                           chk _ = error "You can perform statistics using only a non-list grade"

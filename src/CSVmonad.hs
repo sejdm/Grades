@@ -4,7 +4,9 @@ module CSVmonad (
   , fromColumn
   , fromColumn'
   , usingMonad
+  , usingMonadSafe
   , usingMonadStat
+  , usingMonadStatSafe
   , (.=)
   , (..=)
   , output
@@ -58,6 +60,16 @@ usingMonadStat :: CSVmonad (([Head], [Field]), a) -> (([Head], NamedRecord -> [F
 usingMonadStat x = change (getRight . runParser . runReaderT x)
   where change f = ((fst (fst $ f M.empty), snd . fst . f), snd <$> x)
 
+
+usingMonadSafe :: CSVmonad ([Head], [Field]) -> (NamedRecord -> Either String [Head], NamedRecord -> Either String [Field])
+usingMonadSafe x = (fmap fst . z, fmap snd . z)
+  where z = runParser . runReaderT x
+
+
+
+usingMonadStatSafe :: CSVmonad (([Head], [Field]), a) -> ((NamedRecord -> Either String [Head], NamedRecord -> Either String [Field]), CSVmonad a)
+usingMonadStatSafe x = ((fmap fst . z, fmap snd . z), snd <$> x)
+  where z = runParser . runReaderT (fst <$> x)
 
 
 

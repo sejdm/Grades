@@ -43,7 +43,7 @@ abParse g v = (do a <- v .: "absent"
 ----
 --
 instance FromJSON Var where
-  parseJSON (Object v) = parseFrom v <|> parseFroms v <|> parseUsual v  <|> parseList v <|> parseAvg v <|> parseAgg v <|> parseLetter v
+  parseJSON (Object v) = parseFrom v <|> parseFroms v <|> parseUsual v  <|> parseList v <|> parseAvg v <|> parseAv' v <|> parseAgg v <|> parseLetter v
     where 
        parseUsual v = do x <- v .: "called"
                          y <- v .: "outof"
@@ -57,6 +57,11 @@ instance FromJSON Var where
                         return $ NumVs $ \m ->  t <$>  g m (toByteString (x :: String) `eachOutOf` y)
   --
        parseAvg v = do s <- v .: "average"
+                       d <- v .: "drop" <|> pure 0
+                       y <- v .: "outof"
+                       return $ NumV $ \m ->  (*. y) . combineButDrop d <$> getNums "In average" m s
+--
+       parseAv' v = do s <- v .: "average"
                        d <- v .: "drop" <|> pure 0
                        return $ NumV $ \m ->  combineButDrop d <$> getNums "In average" m s
 --
@@ -82,16 +87,37 @@ instance FromJSON Var where
 --
 
 
-lttr m x | x >= unsafeLookUp "O" m = O
-         | x >= unsafeLookUp "A" m = A
-         | x >= unsafeLookUp "B" m = B
-         | x >= unsafeLookUp "C" m = C
-         | x >= unsafeLookUp "D" m = D
-         | x >= unsafeLookUp "E" m = E
+--lttr m x | x >= unsafeLookUp "O" m = O
+--         | x >= unsafeLookUp "A" m = A
+--         | x >= unsafeLookUp "B" m = B
+--         | x >= unsafeLookUp "C" m = C
+--         | x >= unsafeLookUp "D" m = D
+--         -- | x >= unsafeLookUp "E" m = E
+--         | otherwise = F
+
+lttr :: M.Map String Double -> Double -> LetterGrade
+lttr m x | satisfyGrade "O" x m = O
+         | satisfyGrade "A+" x m = Ap
+         | satisfyGrade "A" x m = A
+         | satisfyGrade "A-" x m = Am
+         | satisfyGrade "B+" x m = Bp
+         | satisfyGrade "B" x m = B
+         | satisfyGrade "B-" x m = Bm
+         | satisfyGrade "C+" x m = Cp
+         | satisfyGrade "C" x m = C
+         | satisfyGrade "C-" x m = Cm
+         | satisfyGrade "D+" x m = Dp
+         | satisfyGrade "D" x m = D
+         | satisfyGrade "D-" x m = Dm
+         | satisfyGrade "E+" x m = Ep
+         | satisfyGrade "E" x m = E
+         | satisfyGrade "E-" x m = Em
          | otherwise = F
 
 
-
+satisfyGrade e x m = case M.lookup e m of 
+                        Nothing -> False
+                        Just y -> x >= y
 
 changeTo''' m z (NumV f) = z ..= f m
 changeTo''' m z (LetterV f) = z ..= f m

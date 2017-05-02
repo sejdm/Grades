@@ -153,8 +153,13 @@ instance Show LGrade where
    show (LGrade (Left e)) = show e
 
 
+round' x | f < 0.5 = i
+         | otherwise = i + 1
+         where i = floor x
+               f = x - fromIntegral i
+
 roundTo :: (RealFrac a1, Fractional a, Integral b) => b -> a1 -> a
-roundTo n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+roundTo n f = (fromInteger $ round' $ f * (10^n)) / (10.0^^n)
 
 
                   

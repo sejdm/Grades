@@ -7,11 +7,14 @@ mth100 = usingMonadStatSafe $ do
   name <- fromColumn "Name"
   id <- fromColumn "Roll No."
   midterm <- "Midterm" `outOf` 30
+  final <- "Final" `outOf` 30
   quizzes <- "Quiz" `eachOutOf` 5
 
-  let quizavg = combineButDrop 1 (quizzes `forAnyAbsent` setZero)
+  let quizavg = combineButDrop 2 (quizzes `forAnyAbsent` setZero)
 
-  let total = quizavg *. 30 +. (midterm `ifAbsent` setZero) *. 70
+  --let total = quizavg *. 40 +. (midterm `ifAbsent` setZero) *. 70
+  let total = quizavg *. 40 +. midterm *. 30 +. final *. 30
+
   
   let letter = letterGradeFrom f total
                  where f x | x >= 96 = O
@@ -25,10 +28,11 @@ mth100 = usingMonadStatSafe $ do
       "Id. " .= id
     , "Name" .= name
     , "Total" .= total
-    , "Midterm" .= midterm
     , "Quizzes" .= quizavg
+    , "Midterm" .= midterm
+    , "Final" .= midterm
     ]
 
     
---main = simpleMain
-main = simpleStatSafe mth100
+main = simpleMain
+--main = simpleStatSafe mth100

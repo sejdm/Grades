@@ -133,5 +133,10 @@ assignBin n x = RangeBin (a*n, a*n +n)
   where a = (fromIntegral $ ceiling (x/n)) - 1
 
 
-roundTo n f = (fromInteger $ round $ f * (10^n)) / (10.0^^n)
+round' x | f < 0.5 = i
+         | otherwise = i + 1
+         where i = floor x
+               f = x - fromIntegral i
+
+roundTo n f = (fromInteger $ round' $ f * (10^n)) / (10.0^^n)
 

@@ -30,7 +30,7 @@ eachOutOf s o = ReaderT (\v -> sequence (map (parseGrade o) $ M.elems $ M.filter
 
 
 getRight (Right x) = x
-getRight (Left e) = error e
+getRight (Left e) = error $ show e
 
 
 
@@ -50,12 +50,27 @@ eitherPrintDouble (Left x) = print x
 
 printStat n s l y = putStrLn n >> eitherPrintDouble (stats s l y) >> putStrLn ""
 
-printStats l y = do printStat "The Mean" mean l y
+--printStats l y = do printStat "The Mean" mean l y
+--                    printStat "The Standard deviation" stdDev l y
+--                    printStat "The Median" median l y
+--                    histOutput 10 "histogram.png" l y
+--
+printStats l y = do let m = getRight $ stats mean l y
+                    let s = getRight $ stats stdDev l y
+                    let me = getRight $ stats median l y
+                    printStat "The Mean" mean l y
                     printStat "The Standard deviation" stdDev l y
                     printStat "The Median" median l y
                     histOutput 10 "histogram.png" l y
 
-roundTo n f = fromInteger (round $ f * (10^n)) / (10.0^^n)
+
+round' x | f < 0.5 = i
+         | otherwise = i + 1
+         where i = floor x
+               f = x - fromIntegral i
+
+roundTo n f = fromInteger (round' $ f * (10^n)) / (10.0^^n)
+
 
 median :: T.Vector Double -> Double
 median xs = sort (T.toList xs) !! n

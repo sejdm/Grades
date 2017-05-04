@@ -50,7 +50,7 @@ instance FromJSON Var where
                          g <- abParse ifAbsentM v
                          return $ NumV $ \m -> g m (toByteString (x :: String) `outOf` y)
 --
-       parseList v = do x <- v .: "called"
+       parseList v = do x <- v .: "prefixed"
                         y <- v .: "eachoutof"
                         t <- (take <$> v .: "take") <|> pure id
                         g <- abParse forAnyAbsentM v
@@ -148,7 +148,7 @@ unsafeLookUp' x = M.findWithDefault (error ("Undefined name: " ++ show x)) x
 --
 data Exam = Exam {exams :: M.Map String Var} deriving (Generic, FromJSON)
 data Output = Output {output :: [Out']} deriving (Show, Generic, FromJSON)
-data Using = Using {statistics :: String} deriving (Show, Generic, FromJSON)
+data Using = Using {statistics :: String, histogram :: Double} deriving (Show, Generic, FromJSON)
 
 unJust (Right x) = x
 unJust (Left e)= error (show e)
@@ -158,7 +158,8 @@ stngfl=  "gradingscheme.yml"
 simpleMain = do x <-  exams . unJust <$> decodeFileEither stngfl
                 y <-  output . unJust <$> decodeFileEither stngfl
                 u <-  statistics . unJust <$> decodeFileEither stngfl
+                h <-  histogram . unJust <$> decodeFileEither stngfl
                 let s = finalSafe x y
-                simpleMsafe s ((chk $ (unsafeLookUp' u x)) x)
+                simpleMsafeHist h s ((chk $ (unsafeLookUp' u x)) x)
                     where chk (NumV x) = x
                           chk _ = error "You can perform statistics using only a non-list grade"

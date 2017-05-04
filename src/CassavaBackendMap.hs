@@ -1,5 +1,13 @@
 {-# LANGUAGE Strict, NoMonomorphismRestriction, MonadComprehensions #-}
-module CassavaBackendMap (simple, simpleStat, simpleStatSafe, simpleM, simpleMsafe) where
+module CassavaBackendMap (
+  simple
+  , simpleStat
+  , simpleStatSafe
+  , simpleStatSafeHist
+  , simpleM
+  , simpleMsafe
+  , simpleMsafeHist
+  ) where
  
 import qualified Data.Vector as T hiding (sequence)
 import qualified Data.ByteString.Lazy as B
@@ -48,5 +56,7 @@ simple = flip (finalIO (\_ _ -> return ())) ()
 
 simpleM = finalIO printStats  
 simpleMsafe = finalIOSafe printStats  
+simpleMsafeHist h = finalIOSafe (printStatsHist h)
 simpleStat = uncurry simpleM
 simpleStatSafe = uncurry simpleMsafe
+simpleStatSafeHist = uncurry simpleMsafeHist

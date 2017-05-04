@@ -1,18 +1,104 @@
+# THIS PROGRAM (AS WITH OTHERS ON MY GITHUB PAGE) IS FOR MY PERSONAL USE. USE 
+# THIS PROGRAM ONLY TO DOUBLE CHECK YOUR WORK.  THERE IS NO GUARANTEE THAT IT 
+# IS FREE FROM SuBTLE BUGS.
+#
+# This config file named gradingscheme.yml must be placed in the folder for 
+# your course grades, i.e. the folder containing the CSV files that you wish to 
+# process.
+#
+# The program takes each input CSV file name as an argument (in case there are 
+# many sections), combines the info, performs the calculations, and outputs 
+# them in one CSV file named out.csv along with a histogram.png file showing 
+# the grade distribution.  Relevant statistics are printed on stdout.
+#
+# You may use wildcards like this,
+#     Grades-exe mat*.csv
+# To process the combination of say mat100b1.csv, mat100b2.csv ...
+
+
+# This section is where you declare the tests/exams and mention how much each 
+# is out of, whether and how it is calculated from other tests/exams etc.
+exams:
+  midterm: 
+    # This grade will be referred by "midterm" in this config
+     called: Midterm
+       # Column name is "Midterm" in the input CSV
+     outof: 30
+       # midterm is out of 30
+     absent: final
+       # Use the grade for the final (defined below) if the midterm grade is 
+       # marked as absent (any non-numeric value is assumed absent)
+
+  final: 
+     called: Final
+     outof: 30
+     absent: zero 
+       # set grade as 0 if absent. Delete/uncomment the above line to mark all 
+       # computations that depend on final as absent and the letter grade as I 
+       # (incomplete).
+
+  quizzes:
+     prefixed: Quiz 
+       # This is a collection (not a single grade) of all grades whose column 
+       # name begins with "Quiz"; so Quiz 1, Quiz 2, etc. BE CAREFUL that there 
+       # are no columns with the same prefix like "Quiz Average" otherwise it 
+       # will also be included (perhaps call that "QAvg" instead)!
+       
+     eachoutof: 5 
+       # Each grade (eg. quiz) is out of 5
+       # The fact that this yaml field is named "eachoutof" rather than "outof" 
+       # is what determines that this is a collection.
+     absent: zero 
+       # Set each absent grade to be 0. Otherwise, if any quiz is marked 
+       # absent, the any averages or other computations based on it will also 
+       # have to be marked absent.
+  
+  quizavg:
+     average: quizzes 
+       # Take the average of "quizzes"
+     drop: 4 
+       # Drop the lowest two
+
+  total:
+    aggregate: 
+     # The weightage of midterm : final : quizavg is 30 : 30 : 40 (the grades 
+     # are normalized automatically)
+       midterm: 30
+       final: 30
+       quizavg: 40
+     
+  letter:
+    using: total 
+      # Calculate the letter grade based on "total" which is defined above
+    scheme: # Cutoffs for each letter grade
+      O: 99
+      A: 90
+      B: 80
+      C: 50
+      D: 40.1
+
+ 
+#This is section is where you mention which columns must appear in out.csv
 output:
+  - called: Id # Name of the column in the output will be Id.
+    original: Roll No. 
+      # Take the value directly from the column named "Roll No." in the input 
+      # csv file. Contrast this with "computed" below.
+
   - called: Name
     original: Name
 
-  - called: Id
-    original: Roll No.
+  - called: Quiz Avg # The column name in out.csv will be "Quiz Avg"
+    computed: quizavg 
+      # Take the value from "quizavg" which was defined in the previous section 
+      # above.  Since this is not taken directly from the input CSV it is 
+      # called "computed" rather than "original".
 
   - called: Midterm
-    computed: midterm 
+    computed: midterm
 
-  - called: Midterm
-    computed: midterm' 
-
-  - called: Quiz Avg
-    computed: quizavg
+  - called: Final
+    computed: final
 
   - called: Total
     computed: total
@@ -21,37 +107,5 @@ output:
     computed: letter
 
 
-exams:
-  midterm: 
-     called: Midterm
-     outof: 30
-
-  midterm':
-     from: midterm
-     absent: zero
-     to: 10
-
-  quizzes:
-     called: Quiz
-     eachoutof: 5
-  
-  quizavg:
-     average: quizzes
-     absent: zero
-
-  total:
-     aggregate:
-       midterm: 60
-       quizavg: 40
-     
-  letter:
-    using: total
-    scheme:
-      O: 95
-      A: 90
-      B: 80
-      C: 70
-      D: 70
-      E: 70
-
-using: midterm
+statistics: total # Calculate all statistics based on "total" defined above
+histogram: 5 # the bin size of the generated histogram is 5

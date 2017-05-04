@@ -5,6 +5,7 @@ module GradeParser (
   , stats
   , histOutput
   , printStats
+  , printStatsHist
   ) where
 
 import qualified Data.ByteString as B
@@ -55,13 +56,25 @@ printStat n s l y = putStrLn n >> eitherPrintDouble (stats s l y) >> putStrLn ""
 --                    printStat "The Median" median l y
 --                    histOutput 10 "histogram.png" l y
 --
-printStats l y = do let m = getRight $ stats mean l y
-                    let s = getRight $ stats stdDev l y
-                    let me = getRight $ stats median l y
-                    printStat "The Mean" mean l y
-                    printStat "The Standard deviation" stdDev l y
-                    printStat "The Median" median l y
-                    histOutput 10 "histogram.png" l y
+--printStats l y = do let m = getRight $ stats mean l y
+--                    let s = getRight $ stats stdDev l y
+--                    let me = getRight $ stats median l y
+--                    printStat "The Mean" mean l y
+--                    printStat "The Standard deviation" stdDev l y
+--                    printStat "The Median" median l y
+--                    histOutput 5 "histogram.png" l y
+--                    let sugg= ("      O: " ++ show (roundTo 1 $ m + 1.65*s) ++"\n      "++ "A: " ++ show (roundTo 1 $ m + 0.85*s) ++"\n      "++ "B: " ++ show (roundTo 1 $ m) ++"\n      "++ "C: " ++ show (roundTo 1 $ m - s) ++"\n      "++ "D: " ++ show (roundTo 1 $ me / 2))
+--                    putStrLn sugg
+--                    writeFile "suggested" sugg
+
+printStats = printStatsHist 10
+printStatsHist  h l y = do let m = getRight $ stats mean l y
+                           let s = getRight $ stats stdDev l y
+                           let me = getRight $ stats median l y
+                           printStat "The Mean" mean l y
+                           printStat "The Standard deviation" stdDev l y
+                           printStat "The Median" median l y
+                           histOutput h "histogram.png" l y
 
 
 round' x | f < 0.5 = i

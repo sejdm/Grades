@@ -9,6 +9,7 @@ module Grade
     , LGrade
     , unparsed
     , marksEither
+    , outoferror
 
     , (/.)
     , (*.)
@@ -43,10 +44,11 @@ import GHC.Generics hiding (to, from)
 import ShowByteString
 import Safe
 
-data GradeErrors = Uncomputed | Unparsed | Unknown String | Absent Double deriving (Eq, Ord, Generic, NFData, ByteStringable)
+data GradeErrors = Exceeded | Uncomputed | Unparsed | Unknown String | Absent Double deriving (Eq, Ord, Generic, NFData, ByteStringable)
 
 instance Show GradeErrors where
   show (Unknown s) = "No grade called " ++ s
+  show Exceeded = "Out of smaller"
   show Uncomputed = "The grade was uncomputed"
   show Unparsed = "The grade was unparsed"
   show (Absent _) = "Ab"
@@ -71,8 +73,10 @@ instance Show Grade where
 
 instance Ord Grade where
   compare (Grade (Right (Sum x, Sum y))) (Grade (Right (Sum x', Sum y'))) = compare (x/y) (x'/y')
-  compare (Grade (Right (Sum _, Sum _))) (Grade (Left _)) = GT
-  compare (Grade (Left _)) (Grade (Right (Sum _, Sum _))) = LT
+  compare (Grade (Right (Sum _, Sum _))) (Grade (Left (Absent _))) = GT
+  compare (Grade (Right (Sum _, Sum _))) (Grade (Left _)) = LT
+  compare (Grade (Left (Absent _))) (Grade (Right (Sum _, Sum _))) = LT
+  compare (Grade (Left _)) (Grade (Right (Sum _, Sum _))) = GT
   compare (Grade (Left e)) (Grade (Left e')) = compare e e'
 
 instance Monoid Grade where
@@ -82,6 +86,11 @@ instance Monoid Grade where
 
 gradeError :: GradeErrors -> Grade
 gradeError = Grade . Left
+
+
+outoferror :: Grade
+outoferror = gradeError Exceeded
+
 
 unparsed :: Grade
 unparsed = gradeError Unparsed

@@ -13,6 +13,7 @@ module Histogram (
   , histList
   , histToChart
   , chartHist
+  , writeHist
   , toMap
   , fromMap
   , histTotal
@@ -75,7 +76,7 @@ combineHists = foldl' addHist empty
 
 
 chartHist n f vs = toFile def n $ do
-     layout_title .= "Sample Bars"
+     layout_title .= "Letter grade distribution"
      layout_title_style . font_size .= 10
      layout_x_axis . laxis_generate .= autoIndexAxis (map (show . fst) values)
      plot $ fmap plotBars $ bars [""] (addIndexes (map (return . snd ) values))
@@ -83,11 +84,17 @@ chartHist n f vs = toFile def n $ do
 
 
 histToChart n h = toFile def n $ do
-     layout_title .= "Sample Bars"
+     layout_title .= "Letter grade distribution"
      layout_title_style . font_size .= 10
      layout_x_axis . laxis_generate .= autoIndexAxis (map (show . fst) values)
      plot $ fmap plotBars $ bars [""] (addIndexes (map (return . snd ) values))
      where values = toList h
+
+
+histToString :: Show a => Histogram a -> String
+histToString = unlines . map (\(b, v) -> show b ++ " " ++ show v) . toList
+
+writeHist f = writeFile f . histToString 
 
 histTotal :: Histogram a -> Int
 histTotal = sum . map snd . toList

@@ -43,18 +43,31 @@ abParse g v = (do a <- v .: "absent"
 ----
 --
 instance FromJSON Var where
-  parseJSON (Object v) = parseFrom v <|> parseFroms v <|> parseUsual v  <|> parseList v <|> parseAvg v <|> parseAv' v <|> parseAgg v <|> parseLetter v
+  parseJSON (Object v) = parseFrom v <|> parseFroms v <|> parseUsual v <|> parseUsualSafe v <|> parseList v <|> parseListSafe v <|> parseAvg v <|> parseAv' v <|> parseAgg v <|> parseLetter v
     where 
        parseUsual v = do x <- v .: "called"
                          y <- v .: "outof"
+                         b <- v .: "unsafe"
                          g <- abParse ifAbsentM v
-                         return $ NumV $ \m -> g m (toByteString (x :: String) `outOf` y)
+                         return $ NumV $ \m -> g m ((if b then outOf else outOfSafe) (toByteString (x :: String)) y)
+--
+       parseUsualSafe v = do x <- v .: "called"
+                             y <- v .: "outof"
+                             g <- abParse ifAbsentM v
+                             return $ NumV $ \m -> g m (toByteString (x :: String) `outOfSafe` y)
 --
        parseList v = do x <- v .: "prefixed"
                         y <- v .: "eachoutof"
+                        b <- v .: "unsafe"
                         t <- (take <$> v .: "take") <|> pure id
                         g <- abParse forAnyAbsentM v
-                        return $ NumVs $ \m ->  t <$>  g m (toByteString (x :: String) `eachOutOf` y)
+                        return $ NumVs $ \m ->  t <$>  g m ((if b then eachOutOf else eachOutOfSafe) (toByteString (x :: String)) y)
+
+       parseListSafe v = do x <- v .: "prefixed"
+                            y <- v .: "eachoutof"
+                            t <- (take <$> v .: "take") <|> pure id
+                            g <- abParse forAnyAbsentM v
+                            return $ NumVs $ \m ->  t <$>  g m (toByteString (x :: String) `eachOutOfSafe` y)
   --
        parseAvg v = do s <- v .: "average"
                        d <- v .: "drop" <|> pure 0

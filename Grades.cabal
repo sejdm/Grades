@@ -43,6 +43,7 @@ library
                      , gtk2hs-buildtools
                      , unordered-containers
                      , yaml
+                     , process
   default-language:    Haskell2010
 
 executable Grades-exe
@@ -67,6 +68,7 @@ executable Grades-exe
                      , safe
                      , unordered-containers
                      , yaml
+                     , process
   default-language:    Haskell2010
 
 test-suite Grades-test
@@ -87,6 +89,7 @@ test-suite Grades-test
                      , safe
                      , unordered-containers
                      , yaml
+                     , process
   ghc-options:         -O2
   default-language:    Haskell2010
 
